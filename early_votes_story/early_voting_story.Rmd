@@ -1,0 +1,33 @@
+---
+title: "early_voting_story"
+author: "daranee balachandar & taylor nichols"
+date: "2024-10-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load Libraries
+
+```{r}
+# Turn off scientific notation
+options(scipen=999)
+library(readr)
+library(tidyverse)
+library(lubridate)
+library(refinr)
+library(janitor)
+# load your packages
+```
+
+## Load early votes data
+This data is as of Day 4, Sunday, Oct. 27. Early voting in Maryland is between Oct. 24 to Oct. 31.
+```{r}
+# Load the Maryland expenditures data table
+earlyvoting_raw_data <- read_csv("GitHub/cns/early_votes_story/EarlyVoting RAW data.csv")
+View(earlyvoting_raw_data)
+```
+
+
