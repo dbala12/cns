@@ -13,21 +13,63 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 # Turn off scientific notation
+# load your packages
 options(scipen=999)
 library(readr)
+library(tidyr)
 library(tidyverse)
 library(lubridate)
 library(refinr)
 library(janitor)
-# load your packages
+library(rvest)
+library(httr)
+library(dplyr)
 ```
 
 ## Load early votes data
-This data is as of Day 4, Sunday, Oct. 27. Early voting in Maryland is between Oct. 24 to Oct. 31.
+This data is as of Day 5, Sunday, Oct. 28. Early voting in Maryland is between Oct. 24 to Oct. 31.
 ```{r}
-# Load the Maryland expenditures data table
-earlyvoting_raw_data <- read_csv("GitHub/cns/early_votes_story/EarlyVoting RAW data.csv")
+earlyvoting_raw_data <- read_csv("EarlyVoting RAW data.csv")
 View(earlyvoting_raw_data)
 ```
+
+## Clean data
+```{r}
+# cleaning function
+earlyvoting_raw_data |>
+  clean_names()
+```
+
+**Task 1: Show the votes for each county for each day**
+```{r}
+# Convert from wide to long format for easier aggregation
+long_data <- earlyvoting_raw_data |> 
+  pivot_longer(cols = starts_with("day"), 
+               names_to = "day", 
+               values_to = "votes")
+
+# Calculate the total votes per county for each day
+votes_per_county_per_day <- long_data |> 
+  group_by(COUNTY_NAME, day) |> 
+  summarize(total_votes = sum(votes, na.rm = TRUE), .groups = 'drop')
+
+# View the results
+print(votes_per_county_per_day)
+```
+
+
+**Task 2: Show which county has the highest early votes**
+```{r}
+
+```
+
+
+
+**Task 3: Which day has the highest early vote turnouts**
+
+
+**Task 4: What is the breakdown of women voters and men voters**
+
+**Task 5: What is the breakdown of DEM and REP and UNA voters**
 
 
