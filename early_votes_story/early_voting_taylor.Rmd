@@ -1,0 +1,73 @@
+---
+title: "cns_early_voting_taylor"
+author: "Taylor Nichols"
+date: "2024-10-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(ggplot2)
+```
+
+```{r}
+early_voting <- read_csv("EarlyVoting RAW data.csv") |>
+  clean_names()
+```
+Questions to answer: 
+Who is voting? Gender/age? Gender/party? Gender/county? 
+gender/age/party 
+gender/age/county 
+gender/party/county 
+gender/age/party/county
+age/party? age/county? 
+age/party/county
+party/county?
+
+1. Gender/age? Gender/party?
+```{r}
+gender_age <- early_voting |>
+  group_by(gender_code, age_group) |>
+  summarise(count=n())
+
+gender_party <- early_voting |>
+  filter(party_code %in% c("DEM", "REP", "UNA")) |>
+  group_by(gender_code, party_code) |>
+  summarise(count=n())
+
+gender_age_party <- early_voting |>
+  filter(party_code %in% c("DEM", "REP", "UNA")) |>
+  group_by(gender_code, age_group, party_code) |>
+  summarise(count = n(), .groups = "drop")
+```
+
+```{r}
+ggplot(gender_age, aes(x = age_group, y = count, fill = gender_code)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Counts by Age Group and Gender",
+       x = "Age Group",
+       y = "Count") +
+  theme_minimal()
+
+ggplot(gender_party, aes(x = party_code, y = count, fill = gender_code)) +
+ geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Counts by Party and Gender",
+       x = "Age Group",
+       y = "Count") +
+  theme_minimal()
+
+ggplot(gender_age_party, aes(x = interaction(gender_code, age_group, party_code), y = count, fill = party_code)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Counts by Gender, Age, and Party",
+       x = "Gender-Age-Party Grouping",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) # Rotates x-axis labels for readability
+```
+Overall findings: 
+45-64 year olds are turning out in higher numbers, and women of all age groups are turning out slightly higher than men. 
