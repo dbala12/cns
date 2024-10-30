@@ -30,13 +30,16 @@ library(ggplot2)
 ```
 
 ## Load early votes data
+
 This data is as of Day 5, Sunday, Oct. 28. Early voting in Maryland is between Oct. 24 to Oct. 31.
+
 ```{r}
 earlyvoting_raw_data <- read_csv("EarlyVoting RAW data.csv")
 View(earlyvoting_raw_data)
 ```
 
 ## Clean data
+
 ```{r}
 # cleaning function
 earlyvoting_raw_data <- earlyvoting_raw_data |>
@@ -44,6 +47,7 @@ earlyvoting_raw_data <- earlyvoting_raw_data |>
 ```
 
 **Task 1: Show the votes for each county for each day**
+
 ```{r}
 # Convert from wide to long format for easier aggregation
 long_data <- earlyvoting_raw_data |> 
@@ -61,12 +65,14 @@ print(votes_per_county_per_day)
 ```
 
 **Task 2: Breakdown of votes according to county. upload census and compare by 10,000 per capita**
+
 ```{r}
 # Load census
 census_api_key("6c6f00214ef0eb2cab5b4ff78cf0bd45c520fec3", install=TRUE, overwrite=TRUE)
 ```
 
 **Task 3: Show which county has the highest early votes in the first 5 days**
+
 ```{r}
 county_totals<- votes_per_county_per_day |> 
   group_by(county_name) |> 
@@ -76,6 +82,7 @@ county_totals<- votes_per_county_per_day |>
 county_totals
 
 ```
+
 ```{r}
 census_data <- get_acs(
   geography = "county",
@@ -91,6 +98,7 @@ census_data <- census_data |>
 
 print(census_data)
 ```
+
 ```{r}
 census_data <- census_data |>
   mutate(county_name = if_else(
@@ -101,6 +109,7 @@ census_data <- census_data |>
 
 census_data
 ```
+
 ```{r}
 census_data <- census_data |> 
   mutate(county_name = case_when(
@@ -111,6 +120,7 @@ census_data <- census_data |>
 
 census_data
 ```
+
 ```{r}
 county_pop_vote_early <- county_totals |> 
   left_join(census_data, by = "county_name")
@@ -146,6 +156,7 @@ ggplot(county_vote_breakdown_pop, aes(x = reorder(county_name, votes_per_10000),
 str(earlyvoting_raw_data)
 colnames(earlyvoting_raw_data)
 ```
+
 ```{r}
 total_votes_by_county_party <- earlyvoting_raw_data |> 
   filter(party_code %in% c("DEM", "REP", "UNA")) |> 
@@ -185,6 +196,6 @@ total_votes_by_gender
 
 **MEMO**
 
-According to early voting data up to day 5, Oct. 28, women are leading in voting early at 315,869 with men at 251,338. 
+According to early voting data up to day 5, Oct. 28, women are leading in voting early at 315,869 with men at 251,338.
 
 Queen Anne's, Talbot, Calvert, Harford and Charles Counties have most early votes per 10,000 in the population. But Montgomery County is leading is most number of early votes. Democrats are leading in Montgomery County, PG County, Baltimore County, Baltimore City and Howard County.
