@@ -190,6 +190,11 @@ ggplot(total_votes_per_capita, aes(x = county_name, y = votes_per_10000, fill = 
   theme(axis.text.x = element_text(angle = 45, hjust = 1))  
 ```
 
+**total votes**
+
+```{r}
+
+```
 
 **What is the breakdown of women voters and men voters**
 
@@ -428,11 +433,84 @@ ggplot(party_votes_2016, aes(x = reorder(party_code, -total_votes), y = total_vo
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
+**Gender comparison between 2016 and 2024**
+```{r}
+merged_gender_votes <- total_votes_by_gender |> 
+  left_join(gender_early_voters_2016, by = "gender_code")
 
+merged_gender_votes <- merged_gender_votes |> 
+  rename(
+    gender_code_2024 = total_votes.x,
+    gender_code_2016 = total_votes.y
+  )
 
+merged_gender_votes 
+```
 
+```{r}
+total_votes_2024 <- sum(merged_gender_votes$gender_code_2024, na.rm = TRUE)
+total_votes_2016 <- sum(merged_gender_votes$gender_code_2016, na.rm = TRUE)
 
+merged_gender_votes <- merged_gender_votes |> 
+  mutate(
+    percent_2024 = (gender_code_2024 / total_votes_2024) * 100,
+    percent_2016 = (gender_code_2016 / total_votes_2016) * 100
+  )
+merged_gender_votes
+```
 
+**Age comparison between 2016 and 2024**
+```{r}
+merged_age_votes <- total_votes_age |> 
+  left_join(age_early_voters_2016, by = "age_group")
+
+merged_age_votes <- merged_age_votes |> 
+  rename(
+    age_code_2024 = total_votes.x,
+    age_code_2016 = total_votes.y
+  )
+
+merged_age_votes 
+```
+
+```{r}
+total_votes_2024 <- sum(merged_age_votes$age_code_2024, na.rm = TRUE)
+total_votes_2016 <- sum(merged_age_votes$age_code_2016, na.rm = TRUE)
+
+merged_age_votes <- merged_age_votes |> 
+  mutate(
+    percent_2024 = (age_code_2024 / total_votes_2024) * 100,
+    percent_2016 = (age_code_2016 / total_votes_2016) * 100
+  )
+merged_age_votes
+```
+
+**party comparison between 2016 and 2024**
+
+```{r}
+merged_party_votes <- party_votes |> 
+  left_join(party_votes_2016, by = "party_code")
+
+merged_party_votes <- merged_party_votes |> 
+  rename(
+    party_code_2024 = total_votes.x,
+    party_code_2016 = total_votes.y
+  )
+
+merged_party_votes 
+```
+
+```{r}
+total_votes_2024 <- sum(merged_party_votes$party_code_2024, na.rm = TRUE)
+total_votes_2016 <- sum(merged_party_votes$party_code_2016, na.rm = TRUE)
+
+merged_party_votes <- merged_party_votes |> 
+  mutate(
+    percent_2024 = (party_code_2024 / total_votes_2024) * 100,
+    percent_2016 = (party_code_2016 / total_votes_2016) * 100
+  )
+merged_party_votes
+```
 
 **MEMO**
 
