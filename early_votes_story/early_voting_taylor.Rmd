@@ -19,6 +19,22 @@ library(tidycensus)
 ```{r}
 early_voting <- read_csv("EarlyVoting RAW data.csv") |>
   clean_names()
+
+early_voting <- early_voting |>
+  rowwise() %>%
+  mutate(total_votes = sum(c_across(day1:day8), na.rm = TRUE)) %>%
+  ungroup()
+
+early_voting_grouped <- early_voting |>
+  group_by(county_name, gender_code, party_code, age_group) %>%
+  summarize(total_votes_sum = sum(total_votes, na.rm = TRUE)) %>%
+  ungroup()
+```
+```{r}
+early_voting_grouped |>
+  group_by(county_name) |>
+  summarise(total_votes = sum(total_votes_sum)) |> 
+  arrange(desc(total_votes))
 ```
 
 
@@ -27,7 +43,7 @@ early_voting <- read_csv("EarlyVoting RAW data.csv") |>
 adult_pop <- get_acs(geography =  "county",
                      state = "24",
                      variables = c(adults_18_plus = "B01001_026"),
-                     year = 2021)
+                     year = 2022)
 
 adult_pop <- adult_pop |>
     mutate(NAME = case_when(
@@ -53,43 +69,55 @@ party/county?
 
 1. Gender/age? Gender/party?
 ```{r}
-gender_age <- early_voting |>
+gender_age <- early_voting_grouped |>
   group_by(gender_code, age_group) |>
-  summarise(count=n())
+  summarise(total_votes = sum(total_votes_sum)) |> 
+  arrange(desc(total_votes))
 
-gender_party <- early_voting |>
+gender_party <- early_voting_grouped |>
   filter(party_code %in% c("DEM", "REP", "UNA")) |>
   group_by(gender_code, party_code) |>
-  summarise(count=n())
+  summarise(total_votes = sum(total_votes_sum)) |> 
+  arrange(desc(total_votes))
 
-gender_age_party <- early_voting |>
+gender_age_party <- early_voting_grouped |>
   filter(party_code %in% c("DEM", "REP", "UNA")) |>
   group_by(gender_code, age_group, party_code) |>
-  summarise(count = n(), .groups = "drop")
+   summarise(total_votes = sum(total_votes_sum)) |> 
+  arrange(desc(total_votes))
 
-age_party <- early_voting |>
+age_party <- early_voting_grouped |>
  filter(party_code %in% c("DEM", "REP", "UNA")) |>
   group_by(age_group, party_code) |>
-  summarise(count = n(), .groups = "drop")
+  summarise(total_votes = sum(total_votes_sum)) |> 
+  arrange(desc(total_votes))
 
+gender_age |> 
+  arrange(desc(total_votes))
+
+gender_party |> 
+  arrange(desc(total_votes))
+
+age_party |> 
+  arrange(desc(total_votes))
 ```
 
 ```{r}
-ggplot(gender_age, aes(x = age_group, y = count, fill = gender_code)) +
+ggplot(gender_age, aes(x = age_group, y = total_votes, fill = gender_code)) +
   geom_bar(stat = "identity", position = "dodge") +
   labs(title = "Counts by Age Group and Gender",
        x = "Age Group",
        y = "Count") +
   theme_minimal()
 
-ggplot(gender_party, aes(x = party_code, y = count, fill = gender_code)) +
+ggplot(gender_party, aes(x = party_code, y = total_votes, fill = gender_code)) +
  geom_bar(stat = "identity", position = "dodge") +
   labs(title = "Counts by Party and Gender",
        x = "Age Group",
        y = "Count") +
   theme_minimal()
 
-ggplot(gender_age_party, aes(x = interaction(gender_code, age_group, party_code), y = count, fill = party_code)) +
+ggplot(gender_age_party, aes(x = interaction(gender_code, age_group, party_code), y = total_votes, fill = party_code)) +
   geom_bar(stat = "identity") +
   labs(title = "Counts by Gender, Age, and Party",
        x = "Gender-Age-Party Grouping",
@@ -97,7 +125,7 @@ ggplot(gender_age_party, aes(x = interaction(gender_code, age_group, party_code)
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) # Rotates x-axis labels for readability
 
-ggplot(age_party, aes(x = party_code, y = count, fill = age_group)) +
+ggplot(age_party, aes(x = party_code, y = total_votes, fill = age_group)) +
  geom_bar(stat = "identity", position = "dodge") +
   labs(title = "Counts by Party and Age",
        x = "Age Group",
@@ -105,7 +133,9 @@ ggplot(age_party, aes(x = party_code, y = count, fill = age_group)) +
   theme_minimal()
 ```
 Overall findings: 
-45-64 year olds are turning out in higher numbers, and women of all age groups are turning out slightly higher than men. Basically everyone except 18-24 year olds are turning out in fairly high numbers. Democrat women are the largest group, followed by democrat men. Republican and Unaffiliated men are turning out at similar rates, as are Republican and Unaffiliated women. Interestingly, they are turning out at similar rates. Democrat women in the 45-64 age range are the top early voting group, followed by dem women ages 25-44. Democrats ages 25 and up are the top voters turning out early. Unaffiliated voters under 25 are turning out higher than young republicans, same for UNA 25-44. Older republicans (45 and up) are the only ones turning out higher than unaffiliated voters.
+45-64 year olds are turning out in higher numbers, followed by folks 65 and up. Women in both these age ranges are turning out in higher rates than men, with women ages 45-64 leading followed by women ages 65 and up. Democrat women are the largest group by a wide margin (more than 7,000 voters), followed by democrat men.
+
+For Republicans, men and women ages 45+ are turning out at higher rates. Younger Republicans aren't turning out early at very high rates at all. 
 
 gender/age/county 
 gender/party/county 
@@ -115,20 +145,22 @@ age/party/county
 party/county?
 
 ```{r}
-age_county <- early_voting |>
+age_county <- early_voting_grouped  |>
   group_by(age_group, county_name) |>
-  summarise(count=n())
+ summarise(total_votes = sum(total_votes_sum)) |> 
+  arrange(desc(total_votes))
 
-gender_party_county <- early_voting |>
+gender_party_county <- early_voting_grouped  |>
   filter(party_code %in% c("DEM", "REP", "UNA")) |>
   group_by(gender_code, party_code, county_name) |>
-  summarise(count=n())
+ summarise(total_votes = sum(total_votes_sum)) |> 
+  arrange(desc(total_votes))
 
 age_county <- left_join(age_county, adult_pop, by = "county_name") |>
-  mutate(per_10k = count/population*10000)
+  mutate(per_10k = total_votes/population*10000)
 
 gender_party_county <- left_join(gender_party_county, adult_pop, by = "county_name") |>
-  mutate(per_10k = count/population*10000)
+  mutate(per_10k = total_votes/population*10000)
 
 age_county |>
   arrange(desc(per_10k))
@@ -137,6 +169,14 @@ gender_party_county |>
   arrange(desc(per_10k))
 ```
 
-Overall, it looks like older adults in Dorchester and Somerset counties are having the highest turnout per capita, with 123 and 117 adults 65 and older per 10k people turning out early. After that, adults ages 45-64 in Anne arundel, Dorchester, Somerset and Garrett counties are having high turnout, with between 104 and 117 people per 10k voting early.
+Overall, it looks like older adults in Talbot and Queen Anne's counties are having the highest turnout per capita, with between 1300-1600 voters per 10k or about 130-160 voters per 1k of the adult population. After that, voters 45-64 in Calvert and Queen Anne's counties are turning out at high rates per capita.
 
-Democrat women in PG County, Baltimore City and Montgomery County had the highest turnout per capita. After that, Republican Men in Montgomery county were highest, followed by Democrat men in PG County. Republican men and women in Dorchester, Garret and Somerset counties also had high turnout.
+Republican women and men in Queen Anne's are actually the highest turnout per capita, with 99-100 per 1000 people from these age groups voting early (roughly 10% of the population?). Women democrats in Charles and PG county are also having high turnout per capita, followed by republicans in Garrett, Calvert and Talbot counties.
+
+
+### Early voting centers analysis
+```{r}
+
+
+```
+
