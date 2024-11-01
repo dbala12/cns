@@ -34,7 +34,7 @@ library(ggplot2)
 This data is as of Day 5, Sunday, Oct. 28. Early voting in Maryland is between Oct. 24 to Oct. 31.
 
 ```{r}
-earlyvoting_raw_data <- read_csv("EarlyVoting RAW data.csv")
+earlyvoting_raw_data <- read_csv("EarlyVoting RAW data_day7.csv")
 View(earlyvoting_raw_data)
 ```
 
@@ -71,7 +71,7 @@ print(votes_per_county_per_day)
 census_api_key("6c6f00214ef0eb2cab5b4ff78cf0bd45c520fec3", install=TRUE, overwrite=TRUE)
 ```
 
-**Task 3: Show which county has the highest early votes in the first 5 days**
+**Task 3: Show which county has the highest early votes in the first 7 days**
 
 ```{r}
 county_totals<- votes_per_county_per_day |> 
@@ -80,11 +80,10 @@ county_totals<- votes_per_county_per_day |>
   arrange(desc(total_early_votes))
   
 county_totals
-
 ```
 
 ```{r}
-census_data <- get_acs(
+census_data_2024 <- get_acs(
   geography = "county",
   variables ="B01001_026",
   year = 2022,
@@ -92,26 +91,26 @@ census_data <- get_acs(
   survey = "acs5"
 )
 
-census_data <- census_data |> 
+census_data_2024 <- census_data_2024 |> 
   rename(county_name = NAME, population = estimate)
   
 
-print(census_data)
+print(census_data_2024)
 ```
 
 ```{r}
-census_data <- census_data |>
+census_data_2024 <- census_data_2024 |>
   mutate(county_name = if_else(
     county_name %in% c("Baltimore City", "Baltimore County"),
     county_name,
     str_replace(county_name, " County, Maryland", "") 
   ))
 
-census_data
+census_data_2024
 ```
 
 ```{r}
-census_data <- census_data |> 
+census_data_2024 <- census_data_2024 |> 
   mutate(county_name = case_when(
     county_name == "Baltimore" ~ "Baltimore County",
     county_name == "Baltimore city, Maryland" ~ "Baltimore City",
@@ -119,12 +118,12 @@ census_data <- census_data |>
     TRUE ~ county_name  
   ))
 
-census_data
+census_data_2024
 ```
 
 ```{r}
 county_pop_vote_early <- county_totals |> 
-  left_join(census_data, by = "county_name")
+  left_join(census_data_2024, by = "county_name")
 
 county_pop_vote_early
 ```
@@ -159,7 +158,7 @@ colnames(earlyvoting_raw_data)
 ```
 ˆ
 ```{r}
-census_data
+census_data_2024
 ```
 
 ```{r}
@@ -170,7 +169,7 @@ total_votes_by_county_party <- earlyvoting_raw_data |>
   arrange(desc(total_votes)) 
 
 total_votes_per_capita <- total_votes_by_county_party |> 
-  left_join(census_data, by = "county_name") |> 
+  left_join(census_data_2024, by = "county_name") |> 
   mutate(votes_per_10000 = (total_votes / population) * 10000) |> 
   select(county_name, party_code, total_votes, votes_per_10000)
 
@@ -186,11 +185,16 @@ ggplot(total_votes_per_capita, aes(x = county_name, y = votes_per_10000, fill = 
   labs(title = "Early Votes per 10,000 Residents by County and Party",
        x = "County",
        y = "Votes per 10,000 Residents") +
-  scale_fill_manual(values = c("DEM" = "blue", "REP" = "red", "UNA" = "green")) +  
+  scale_fill_manual(values = c("DEM" = "blue", "REP" = "red", "UNA" = "darkgreen")) +  
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))  
 ```
 
+**total votes**
+
+```{r}
+
+```
 
 **What is the breakdown of women voters and men voters**
 
@@ -231,7 +235,6 @@ ggplot(total_votes_age, aes(x = reorder(age_group, -total_votes), y = total_vote
 
 ```
 
-
 **Party**
 
 ```{r}
@@ -252,8 +255,262 @@ ggplot(party_votes, aes(x = reorder(party_code, -total_votes), y = total_votes))
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
+**comparing early votes for 2024 and early votes for 2016**
+
+```{r}
+early_votes_2016 <- read_csv("PG16 EarlyVoting RAW data.csv")
+early_votes_2016
+```
+```{r}
+early_votes_2016 <- early_votes_2016 |>
+  clean_names()
+
+early_votes_2016
+```
+ 
+votes for each county for each day in 2016
+```{r}
+long_data <- early_votes_2016 |> 
+   pivot_longer(cols = starts_with("day"), 
+              names_to = "day", 
+              values_to = "votes")
+
+# Calculate the total votes per county for each day
+early_votes_county_day_2016 <- long_data |> 
+   group_by(county_name, day) |> 
+   summarize(total_votes = sum(votes, na.rm = TRUE), .groups = 'drop')
+
+# View the results
+print(early_votes_county_day_2016)
+```
+**county votes 2016**
+```{r}
+county_totals_2016<- early_votes_county_day_2016 |> 
+  group_by(county_name) |> 
+  summarise(total_early_votes = sum(total_votes)) |> 
+  arrange(desc(total_early_votes))
+  
+county_totals_2016
+```
+
+```{r}
+census_data_2016 <- get_acs(
+  geography = "county",
+  variables = "B01001_026",
+  year = 2016,
+  state = "MD",
+  survey = "acs5"
+)
+
+census_data_2016 <- census_data_2016 |> 
+  rename(county_name = NAME, population = estimate)
+  
+
+print(census_data_2016)
+```
+
+```{r}
+census_data_2016 <- census_data_2016 |>
+  mutate(county_name = if_else(
+    county_name %in% c("Baltimore City", "Baltimore County"),
+    county_name,
+    str_replace(county_name, " County, Maryland", "") 
+  ))
+
+census_data_2016
+```
+
+```{r}
+census_data_2016 <- census_data_2016 |> 
+  mutate(county_name = case_when(
+    county_name == "Baltimore" ~ "Baltimore County",
+    county_name == "Baltimore city, Maryland" ~ "Baltimore City",
+    county_name == "St. Mary's" ~ "Saint Mary's", 
+    TRUE ~ county_name  
+  ))
+
+census_data_2016
+```
+```{r}
+county_pop_2016_early_vote <- county_totals_2016 |> 
+  left_join(census_data_2016, by = "county_name")
+
+county_pop_2016_early_vote
+```
+```{r}
+county_2016_pop_vote <- county_pop_2016_early_vote |> 
+  mutate(votes_per_10000 = (total_early_votes / population) * 10000) |> 
+  arrange(desc(votes_per_10000))
+
+county_2016_pop_vote
+```
+
+```{r}
+ggplot(county_2016_pop_vote, aes(x = reorder(county_name, votes_per_10000), y = votes_per_10000)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  coord_flip() +  # Flip coordinates for better readability
+  labs(
+    title = "Early Votes per 10,000 People by County",
+    x = "County",
+    y = "Votes per 10,000 People"
+  ) +
+  theme_minimal()
+```
+**party/county early votes analysis 2016
+```{r}
+party_county_2016_votes <- early_votes_2016 |> 
+   filter(party_code %in% c("DEM", "REP", "UNA")) |> 
+  group_by(county_name, party_code) |> 
+  summarise(total_votes = sum(day1, day2, day3, day4, day5, day6, day7, day8, na.rm = TRUE), .groups = 'drop') |> 
+  arrange(desc(total_votes)) 
 
 
+total_2016_votes_per_capita <- party_county_2016_votes |> 
+  left_join(census_data_2016, by = "county_name") |> 
+  mutate(votes_per_10000 = (total_votes / population) * 10000) |> 
+  select(county_name, party_code, total_votes, votes_per_10000)
+
+total_2016_votes_per_capita
+
+```
+
+```{r}
+ggplot(total_2016_votes_per_capita, aes(x = county_name, y = votes_per_10000, fill = party_code)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Early Votes per 10,000 Residents by County and Party in 2016",
+       x = "County",
+       y = "Votes per 10,000 Residents") +
+  scale_fill_manual(values = c("DEM" = "blue", "REP" = "red", "UNA" = "green")) +  
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+```
+
+**Age groups voting early in 2016**
+```{r}
+age_early_voters_2016 <- early_votes_2016 |> 
+  group_by(age_group) |> 
+  summarise(total_votes = sum(day1, day2, day3, day4, day5, day6, day7, day8, na.rm = TRUE), .groups = 'drop') |> 
+  arrange(desc(total_votes))
+
+age_early_voters_2016
+```
+```{r}
+ggplot(age_early_voters_2016, aes(x = reorder(age_group, -total_votes), y = total_votes)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(title = "Total Early Votes by Age Group in 2016",
+       x = "Age Group",
+       y = "Total Votes") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+**Gender demographics voting early in 2016**
+
+```{r}
+gender_early_voters_2016 <- early_votes_2016 |> 
+  group_by(gender_code) |> 
+  summarise(total_votes = sum(day1, day2, day3, day4, day5, day6, day7, day8, na.rm = TRUE), .groups = 'drop')
+
+gender_early_voters_2016
+```
+
+**Parties voting early in 2016**
+```{r}
+party_votes_2016 <- early_votes_2016 |>
+  group_by(party_code) |> 
+  summarise(total_votes = sum(day1, day2, day3, day4, day5, day6, day7, day8, na.rm = TRUE), .groups = 'drop') |> 
+  arrange(desc(total_votes))
+
+party_votes_2016
+```
+```{r}
+ggplot(party_votes_2016, aes(x = reorder(party_code, -total_votes), y = total_votes)) +
+  geom_bar(stat = "identity", fill = "lightgreen") +
+  labs(title = "Total Early Votes by Party in 2016",
+       x = "Party Code",
+       y = "Total Votes") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+**Gender comparison between 2016 and 2024**
+```{r}
+merged_gender_votes <- total_votes_by_gender |> 
+  left_join(gender_early_voters_2016, by = "gender_code")
+
+merged_gender_votes <- merged_gender_votes |> 
+  rename(
+    gender_code_2024 = total_votes.x,
+    gender_code_2016 = total_votes.y
+  )
+
+merged_gender_votes 
+```
+
+```{r}
+total_votes_2024 <- sum(merged_gender_votes$gender_code_2024, na.rm = TRUE)
+total_votes_2016 <- sum(merged_gender_votes$gender_code_2016, na.rm = TRUE)
+
+merged_gender_votes <- merged_gender_votes |> 
+  mutate(
+    percent_2024 = (gender_code_2024 / total_votes_2024) * 100,
+    percent_2016 = (gender_code_2016 / total_votes_2016) * 100
+  )
+merged_gender_votes
+```
+
+**Age comparison between 2016 and 2024**
+```{r}
+merged_age_votes <- total_votes_age |> 
+  left_join(age_early_voters_2016, by = "age_group")
+
+merged_age_votes <- merged_age_votes |> 
+  rename(
+    age_code_2024 = total_votes.x,
+    age_code_2016 = total_votes.y
+  )
+
+merged_age_votes 
+```
+
+```{r}
+total_votes_2024 <- sum(merged_age_votes$age_code_2024, na.rm = TRUE)
+total_votes_2016 <- sum(merged_age_votes$age_code_2016, na.rm = TRUE)
+
+merged_age_votes <- merged_age_votes |> 
+  mutate(
+    percent_2024 = (age_code_2024 / total_votes_2024) * 100,
+    percent_2016 = (age_code_2016 / total_votes_2016) * 100
+  )
+merged_age_votes
+```
+
+**party comparison between 2016 and 2024**
+
+```{r}
+merged_party_votes <- party_votes |> 
+  left_join(party_votes_2016, by = "party_code")
+
+merged_party_votes <- merged_party_votes |> 
+  rename(
+    party_code_2024 = total_votes.x,
+    party_code_2016 = total_votes.y
+  )
+
+merged_party_votes 
+```
+
+```{r}
+total_votes_2024 <- sum(merged_party_votes$party_code_2024, na.rm = TRUE)
+total_votes_2016 <- sum(merged_party_votes$party_code_2016, na.rm = TRUE)
+
+merged_party_votes <- merged_party_votes |> 
+  mutate(
+    percent_2024 = (party_code_2024 / total_votes_2024) * 100,
+    percent_2016 = (party_code_2016 / total_votes_2016) * 100
+  )
+merged_party_votes
+```
 
 **MEMO**
 
