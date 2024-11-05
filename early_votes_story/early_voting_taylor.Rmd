@@ -14,13 +14,22 @@ library(tidyverse)
 library(janitor)
 library(ggplot2)
 library(tidycensus)
+library(scales)
 ```
 
 ```{r}
-early_voting <- read_csv("EarlyVoting RAW data.csv") |>
+early_voting <- read_csv("raw_data_nov_1.csv") |>
+  clean_names()
+
+early_voting_2016 <- read_csv("PG16 EarlyVoting RAW data.csv")|>
   clean_names()
 
 early_voting <- early_voting |>
+  rowwise() %>%
+  mutate(total_votes = sum(c_across(day1:day8), na.rm = TRUE)) %>%
+  ungroup()
+
+early_voting_2016 <- early_voting_2016 |>
   rowwise() %>%
   mutate(total_votes = sum(c_across(day1:day8), na.rm = TRUE)) %>%
   ungroup()
@@ -29,9 +38,21 @@ early_voting_grouped <- early_voting |>
   group_by(county_name, gender_code, party_code, age_group) %>%
   summarize(total_votes_sum = sum(total_votes, na.rm = TRUE)) %>%
   ungroup()
+
+early_voting_grouped_2016 <- early_voting_2016 |>
+  group_by(county_name, gender_code, party_code, age_group) %>%
+  summarize(total_votes_sum = sum(total_votes, na.rm = TRUE)) %>%
+  ungroup()
 ```
+
+
 ```{r}
 early_voting_grouped |>
+  group_by(county_name) |>
+  summarise(total_votes_2024 = sum(total_votes_sum)) |> 
+  arrange(desc(total_votes_2024))
+
+early_voting_grouped_2016 |>
   group_by(county_name) |>
   summarise(total_votes = sum(total_votes_sum)) |> 
   arrange(desc(total_votes))
@@ -69,37 +90,139 @@ party/county?
 
 1. Gender/age? Gender/party?
 ```{r}
+# Summarising gender and age groups
 gender_age <- early_voting_grouped |>
   group_by(gender_code, age_group) |>
-  summarise(total_votes = sum(total_votes_sum)) |> 
-  arrange(desc(total_votes))
+  summarise(total_votes = sum(total_votes_sum, na.rm = TRUE))
 
+gender_age_2016 <- early_voting_grouped_2016 |>
+  group_by(gender_code, age_group) |>
+  summarise(total_votes_2016 = sum(total_votes_sum, na.rm = TRUE))
+
+# Summarising gender and party groups
 gender_party <- early_voting_grouped |>
   filter(party_code %in% c("DEM", "REP", "UNA")) |>
   group_by(gender_code, party_code) |>
-  summarise(total_votes = sum(total_votes_sum)) |> 
-  arrange(desc(total_votes))
+  summarise(total_votes = sum(total_votes_sum, na.rm = TRUE))
 
+gender_party_2016 <- early_voting_grouped_2016 |>
+  filter(party_code %in% c("DEM", "REP", "UNA")) |>
+  group_by(gender_code, party_code) |>
+  summarise(total_votes_2016 = sum(total_votes_sum, na.rm = TRUE))
+
+# Summarising gender, age, and party groups
 gender_age_party <- early_voting_grouped |>
   filter(party_code %in% c("DEM", "REP", "UNA")) |>
   group_by(gender_code, age_group, party_code) |>
-   summarise(total_votes = sum(total_votes_sum)) |> 
-  arrange(desc(total_votes))
+  summarise(total_votes = sum(total_votes_sum, na.rm = TRUE))
 
+# Summarising age and party groups
 age_party <- early_voting_grouped |>
- filter(party_code %in% c("DEM", "REP", "UNA")) |>
+  filter(party_code %in% c("DEM", "REP", "UNA")) |>
   group_by(age_group, party_code) |>
-  summarise(total_votes = sum(total_votes_sum)) |> 
-  arrange(desc(total_votes))
+  summarise(total_votes = sum(total_votes_sum, na.rm = TRUE))
 
-gender_age |> 
-  arrange(desc(total_votes))
+age_party_2016 <- early_voting_grouped_2016 |>
+  filter(party_code %in% c("DEM", "REP", "UNA")) |>
+  group_by(age_group, party_code) |>
+  summarise(total_votes_2016 = sum(total_votes_sum, na.rm = TRUE))
 
-gender_party |> 
-  arrange(desc(total_votes))
+# Merging data frames
+gender_age <- full_join(gender_age, gender_age_2016, by = c("gender_code", "age_group"))
+age_party <- full_join(age_party, age_party_2016, by = c("party_code", "age_group"))
+gender_party <- full_join(gender_party, gender_party_2016, by = c("gender_code", "party_code"))
 
-age_party |> 
-  arrange(desc(total_votes))
+# Calculate the total sum of total_votes for all voters
+all_votes_2024 <- sum(early_voting_grouped$total_votes_sum, na.rm = TRUE)
+all_votes_2016 <- sum(early_voting_grouped_2016$total_votes_sum, na.rm = TRUE)
+
+gender_party <- gender_party |>
+  mutate(
+    pct = total_votes / all_votes_2024 * 100,
+    pct_2016 = total_votes_2016 / all_votes_2016 * 100
+  )
+
+age_party <- age_party |>
+  mutate(
+    pct = total_votes / all_votes_2024 * 100,
+    pct_2016 = total_votes_2016 / all_votes_2016 * 100
+  )
+# Assuming all_votes_2024 and all_votes_2016 are defined somewhere above this code
+gender_age <- gender_age |>
+  mutate(
+    pct = total_votes / all_votes_2024 * 100,
+    pct_2016 = total_votes_2016 / all_votes_2016 * 100
+  )
+
+# Optionally, round the percentages for better readability
+gender_age <- gender_age |>
+  mutate(
+    pct = round(pct, 2),       # Round to 2 decimal places
+    pct_2016 = round(pct_2016, 2)  # Round to 2 decimal places
+  )
+
+```
+
+
+```{r}
+view(gender_age)
+view(gender_party)
+view(age_party)
+```
+
+
+```{r}
+early_voting_grouped <- early_voting_grouped |>
+rename(total_votes_2024 = total_votes_sum)
+
+early_voting_grouped_2016 <- early_voting_grouped_2016 |>
+rename(total_votes_2016 = total_votes_sum)
+
+early_voting_grouped_full <- left_join(early_voting_grouped, early_voting_grouped_2016, 
+                                       by = c("county_name", "gender_code", "party_code", "age_group"))
+```
+
+
+```{r}
+early_voting_grouped_full |>
+  group_by(gender_code) |>
+  summarise(
+    total_votes_2024 = sum(total_votes_2024, na.rm = TRUE),
+    total_votes_2016 = sum(total_votes_2016, na.rm = TRUE)) |>
+  mutate(pct_2024 = total_votes_2024/all_votes_2024, pct_2016 = total_votes_2016/all_votes_2016)
+
+early_voting_grouped_full |>
+  group_by(age_group) |>
+  summarise(
+    total_votes_2024 = sum(total_votes_2024, na.rm = TRUE),
+    total_votes_2016 = sum(total_votes_2016, na.rm = TRUE)) |>
+  mutate(pct_2024 = total_votes_2024/all_votes_2024, pct_2016 = total_votes_2016/all_votes_2016)
+
+```
+
+```{r}
+# Reshape data to have a single 'total_votes' column with a 'year' identifier
+gender_age_long <- early_voting_grouped_full |>
+  group_by(age_group, gender_code) |>
+  summarise(
+    total_votes_2024 = sum(total_votes_2024, na.rm = TRUE),
+    total_votes_2016 = sum(total_votes_2016, na.rm = TRUE)
+  ) |>
+  pivot_longer(cols = c(total_votes_2024, total_votes_2016),
+               names_to = "year",
+               values_to = "total_votes") |>
+  mutate(year = ifelse(year == "total_votes_2024", "2024", "2016"))
+
+# Plotting
+ggplot(gender_age_long, aes(x = age_group, y = total_votes, fill = gender_code)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_wrap(~ year) +
+  labs(title = "Counts by Age Group, Gender, and Election Year",
+       x = "Age Group",
+       y = "Total Votes") +
+  theme_minimal() +
+  scale_y_continuous(labels = comma)
+
 ```
 
 ```{r}
@@ -108,14 +231,16 @@ ggplot(gender_age, aes(x = age_group, y = total_votes, fill = gender_code)) +
   labs(title = "Counts by Age Group and Gender",
        x = "Age Group",
        y = "Count") +
-  theme_minimal()
+  theme_minimal() +
+  scale_y_continuous(labels = comma)
 
 ggplot(gender_party, aes(x = party_code, y = total_votes, fill = gender_code)) +
- geom_bar(stat = "identity", position = "dodge") +
+  geom_bar(stat = "identity", position = "dodge") +
   labs(title = "Counts by Party and Gender",
-       x = "Age Group",
+       x = "Party Code",
        y = "Count") +
-  theme_minimal()
+  theme_minimal() +
+  scale_y_continuous(labels = comma)
 
 ggplot(gender_age_party, aes(x = interaction(gender_code, age_group, party_code), y = total_votes, fill = party_code)) +
   geom_bar(stat = "identity") +
@@ -123,14 +248,17 @@ ggplot(gender_age_party, aes(x = interaction(gender_code, age_group, party_code)
        x = "Gender-Age-Party Grouping",
        y = "Count") +
   theme_minimal() +
+  scale_y_continuous(labels = comma) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) # Rotates x-axis labels for readability
 
 ggplot(age_party, aes(x = party_code, y = total_votes, fill = age_group)) +
- geom_bar(stat = "identity", position = "dodge") +
+  geom_bar(stat = "identity", position = "dodge") +
   labs(title = "Counts by Party and Age",
-       x = "Age Group",
+       x = "Party Code",
        y = "Count") +
-  theme_minimal()
+  theme_minimal() +
+  scale_y_continuous(labels = comma)
+
 ```
 Overall findings: 
 45-64 year olds are turning out in higher numbers, followed by folks 65 and up. Women in both these age ranges are turning out in higher rates than men, with women ages 45-64 leading followed by women ages 65 and up. Democrat women are the largest group by a wide margin (more than 7,000 voters), followed by democrat men.
@@ -147,13 +275,13 @@ party/county?
 ```{r}
 age_county <- early_voting_grouped  |>
   group_by(age_group, county_name) |>
- summarise(total_votes = sum(total_votes_sum)) |> 
+ summarise(total_votes = sum(total_votes_2024)) |> 
   arrange(desc(total_votes))
 
 gender_party_county <- early_voting_grouped  |>
   filter(party_code %in% c("DEM", "REP", "UNA")) |>
   group_by(gender_code, party_code, county_name) |>
- summarise(total_votes = sum(total_votes_sum)) |> 
+ summarise(total_votes = sum(total_votes_2024)) |> 
   arrange(desc(total_votes))
 
 age_county <- left_join(age_county, adult_pop, by = "county_name") |>
@@ -176,7 +304,70 @@ Republican women and men in Queen Anne's are actually the highest turnout per ca
 
 ### Early voting centers analysis
 ```{r}
+early_voting_grouped_full_counties <- early_voting_grouped_full |>
+  group_by(county_name) |>
+  summarise(
+    total_votes_2024 = sum(total_votes_2024, na.rm = TRUE),
+    total_votes_2016 = sum(total_votes_2016, na.rm = TRUE))
+
+early_voting_grouped_full_counties <- left_join(early_voting_grouped_full_counties, adult_pop, by = "county_name")
+
+early_voting_grouped_full_counties <- early_voting_grouped_full_counties |>
+  mutate(pct2024 = total_votes_2024/population, pct2016 = total_votes_2016/population, difference = pct2024-pct2016) |>
+  arrange(county_name)
+```
+
+```{r}
+age_comparison <- early_voting_grouped_full |>
+  group_by(age_group) |>
+  summarise(
+    total_votes_2024 = sum(total_votes_2024, na.rm = TRUE),
+    total_votes_2016 = sum(total_votes_2016, na.rm = TRUE))
+
+# Reshape data for plotting
+age_comparison_long <- age_comparison |>
+  pivot_longer(cols = c(total_votes_2024, total_votes_2016),
+               names_to = "year",
+               values_to = "total_votes") |>
+  mutate(year = ifelse(year == "total_votes_2024", "2024", "2016"))
+
+# Plotting
+ggplot(age_comparison_long, aes(x = age_group, y = total_votes, fill = year)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Comparison of Total Votes by Age Group for 2024 and 2016",
+       x = "Age Group",
+       y = "Total Votes") +
+  theme_minimal() +
+  scale_y_continuous(labels = comma) +
+  scale_fill_manual(values = c("2024" = "blue", "2016" = "red"))
+```
 
 
+```{r}
+write_csv(early_voting_grouped_full_counties, "county_changes.csv")
+```
+
+```{r}
+(all_votes_2024 - all_votes_2016)/all_votes_2016*100
+
+```
+
+```{r}
+party <- early_voting_grouped_full |>
+  group_by(party_code) |>
+  summarise(
+party_votes_2024 = sum(total_votes_2024, na.rm = TRUE),
+party_votes_2016 = sum(total_votes_2016, na.rm = TRUE)) |>
+  mutate(pct_2024 = party_votes_2024/all_votes_2024, pct_2016 = party_votes_2016/all_votes_2016)
+
+```
+
+```{r}
+write_csv(party, "party.csv")
+```
+
+```{r}
+all_votes_2016
+all_votes_2024
 ```
 
