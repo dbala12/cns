@@ -34,8 +34,9 @@ library(ggplot2)
 This data is as of Day 5, Sunday, Oct. 28. Early voting in Maryland is between Oct. 24 to Oct. 31.
 
 ```{r}
-earlyvoting_raw_data <- read_csv("EarlyVoting RAW data_day7.csv")
+earlyvoting_raw_data <- read_csv("raw_data_nov_1.csv")
 View(earlyvoting_raw_data)
+
 ```
 
 ## Clean data
@@ -136,6 +137,10 @@ county_vote_breakdown_pop <- county_pop_vote_early |>
 county_vote_breakdown_pop
 
 ```
+```{r}
+write.csv(county_vote_breakdown_pop, "county_vote_breakdown_pop.csv", row.names = FALSE)
+```
+
 
 ```{r}
 ggplot(county_vote_breakdown_pop, aes(x = reorder(county_name, votes_per_10000), y = votes_per_10000)) +
@@ -178,6 +183,32 @@ total_votes_per_capita
 ```
 
 
+```{r}
+# Group by county and party and calculate total votes per 10,000
+total_votes_by_county_party <- earlyvoting_raw_data |> 
+  filter(party_code %in% c("DEM", "REP", "UNA")) |> 
+  group_by(county_name, party_code) |> 
+  summarise(total_votes = sum(day1, day2, day3, day4, day5, day6, day7, day8, na.rm = TRUE), .groups = 'drop') |> 
+  arrange(desc(total_votes)) 
+
+# Calculate votes per 10,000 and reshape the data
+total_votes_per_capita <- total_votes_by_county_party |> 
+  left_join(census_data_2024, by = "county_name") |> 
+  mutate(votes_per_10000 = (total_votes / population) * 10000) |> 
+  select(county_name, party_code, votes_per_10000) |> 
+  pivot_wider(names_from = party_code, values_from = votes_per_10000, names_prefix = "votes_per_10000_") |> 
+  mutate(total_votes_per_10000 = rowSums(across(starts_with("votes_per_10000_")), na.rm = TRUE)) |> 
+  arrange(desc(total_votes_per_10000))
+
+
+# View the reshaped data
+total_votes_per_capita
+
+write.csv(total_votes_per_capita, "total_votes_per_capita.csv", row.names = FALSE)
+
+```
+
+
 
 ```{r}
 ggplot(total_votes_per_capita, aes(x = county_name, y = votes_per_10000, fill = party_code)) +
@@ -190,11 +221,6 @@ ggplot(total_votes_per_capita, aes(x = county_name, y = votes_per_10000, fill = 
   theme(axis.text.x = element_text(angle = 45, hjust = 1))  
 ```
 
-**total votes**
-
-```{r}
-
-```
 
 **What is the breakdown of women voters and men voters**
 
@@ -255,6 +281,25 @@ ggplot(party_votes, aes(x = reorder(party_code, -total_votes), y = total_votes))
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
+```{r}
+gender_party_2024 <- vote_early_data |> 
+  group_by(gender_code, party_code) |> 
+  summarise(total_votes = sum(day1, day2, day3, day4, day5, day6, day7, day8, na.rm = TRUE), .groups = 'drop') |> 
+  arrange(desc(total_votes))
+
+gender_party_2024
+
+write.csv(gender_party_2024, "gender_party_2024.csv", row.names = FALSE)
+
+```
+
+
+
+
+
+
+
+
 **comparing early votes for 2024 and early votes for 2016**
 
 ```{r}
