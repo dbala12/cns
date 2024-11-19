@@ -1,0 +1,31 @@
+---
+title: "election_precinct_data_analysis"
+author: "daranee balachandar"
+date: "2024-11-12"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Load libraries
+```{r}
+library(tidyverse)
+library(googlesheets4)
+library(stringr)
+library(janitor)
+library(lubridate)
+```
+```{r}
+library(readxl)
+Polling_Places_AEMS_PP24 <- read_excel("~/GitHub/cns/precinct data/Polling Places AEMS PP24.xlsx")
+
+View(Polling_Places_AEMS_PP24)
+
+md_election2024_results <- 
+  read_csv("~/GitHub/cns/precinct data/md_election2024_results.csv")
+
+md_election2024_results
+```
+
