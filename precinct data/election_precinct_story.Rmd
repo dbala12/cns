@@ -11,21 +11,43 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ##Load libraries
 ```{r}
-library(tidyverse)
-library(googlesheets4)
+# Turn off scientific notation
+# load your packages
+options(scipen=999)
+library(readr)
 library(stringr)
-library(janitor)
+library(tidyr)
+library(tidyverse)
+library(tidycensus)
 library(lubridate)
+library(refinr)
+library(janitor)
+library(rvest)
+library(httr)
+library(dplyr)
+library(ggplot2)
+
 ```
+
+
 ```{r}
-library(readxl)
-Polling_Places_AEMS_PP24 <- read_excel("~/GitHub/cns/precinct data/Polling Places AEMS PP24.xlsx")
+md_2024_general_precinct_results <- read_csv("MD 2024 General Precinct Results - md_election_results.csv")
 
-View(Polling_Places_AEMS_PP24)
+md_2024_general_precinct_results 
 
-md_election2024_results <- 
-  read_csv("~/GitHub/cns/precinct data/md_election2024_results.csv")
-
-md_election2024_results
 ```
+
+##Load census data
+
+```{r}
+# Load census
+census_api_key("6c6f00214ef0eb2cab5b4ff78cf0bd45c520fec3", install=TRUE, overwrite=TRUE)
+```
+
+```{r}
+
+
+
+```
+
 
