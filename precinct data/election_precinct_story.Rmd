@@ -36,17 +36,42 @@ md_2024_general_precinct_results <- read_csv("MD 2024 General Precinct Results -
 md_2024_general_precinct_results 
 
 ```
-
 ##Load census data
 
 ```{r}
 # Load census
 census_api_key("6c6f00214ef0eb2cab5b4ff78cf0bd45c520fec3", install=TRUE, overwrite=TRUE)
 ```
+**Get voter population data by county for 2018 and 2024**
+```{r}
+# Function to fetch voting-eligible population data for a specific year
+fetch_voting_population_data <- function(year) {
+  get_acs(
+    geography = "county",
+    variables = c(voting_population = "B29001_005"),  # Citizen voting-age population variable
+    state = "MD",
+    year = year,
+    survey = "acs5"
+  ) |> 
+    select(NAME, voting_population = estimate) %>%
+    mutate(year = year)
+}
+
+# Fetch data for 2018 and 2022
+voting_pop_2018 <- fetch_voting_population_data(2018)
+voting_pop_2022 <- fetch_voting_population_data(2022)
+
+# Merge data and calculate population difference
+merged_voting_data <- voting_pop_2018 |> 
+  inner_join(voting_pop_2022, by = "NAME", suffix = c("_2018", "_2022")) |> 
+  mutate(voting_population_difference = voting_population_2022 - voting_population_2018)
+
+# Display the result
+print(merged_voting_data)
+```
+**Look into Frederick county and Garrett county precinct data 2024**
 
 ```{r}
-
-
 
 ```
 
